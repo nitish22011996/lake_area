@@ -1,54 +1,53 @@
 import streamlit as st
-import leafmap.foliumap as leafmap
 import pandas as pd
-import streamlit.components.v1 as components
+import matplotlib.pyplot as plt
+import numpy as np
 
-# Load the CSV data
-df = pd.read_csv("dat.csv")
+# Load the CSV data (uploaded file)
+file_path = '/mnt/data/image.png'  # path to your newly uploaded file
+df = pd.read_csv(file_path)
 
 # App title
-st.title('Interactive Lake Map')
+st.title('Lake Monitoring - Water Area and Seasonal Trends')
 
-# Create a leafmap map
-m = leafmap.Map()
+# Dropdown to select the lake ID
+lake_id = st.selectbox('Select a Lake by ID:', df['Lake_id'].unique())
 
-# Dropdown to select the column for filtering
-option = st.selectbox(
-    'Select the column to filter by:',
-    ('ID', 'Climate _Zone')
-)
-#  'Lake_Class', 'Average Increase in temperature', 'P value'
-# Check if the selected option is 'ID' or another that requires specific value input
-if option == 'ID':
-    # Text input for specific value
-    value = st.number_input('Enter the value:', step=1)
-    filtered_df = df[df[option] == value]
-elif option == 'Lake_Class':
-    # Get unique clarity levels
-    clarity_levels = df['Lake_Class'].unique()
-    # Select the clarity level
-    clarity_level = st.selectbox('Select clarity level:', clarity_levels)
-    filtered_df = df[df[option].str.strip() == clarity_level]  # Remove leading/trailing whitespaces before comparison
-else:
-    # Number input for min and max values
-    min_value = st.number_input('Minimum value:', step=0.01)
-    max_value = st.number_input('Maximum value:', step=0.01)
-    filtered_df = df[(df[option] >= min_value) & (df[option] <= max_value)]
+# Filter the dataframe by the selected lake ID
+lake_data = df[df['Lake_id'] == lake_id]
 
 # Display filtered lake information
-if not filtered_df.empty:
-    st.write(filtered_df)
+st.write(f"Data for Lake ID: {lake_id}")
+st.write(lake_data)
 
-    # Add markers for all filtered lakes to the map
-    for idx, row in filtered_df.iterrows():
-        m.add_marker(location=(row['MEAN_Y'], row['MEAN_X']), popup=f"{option}: {row[option]}")
-    st.success("Map updated with selected filters.")
-else:
-    st.error("No data matches your filter!")
+# Extract the columns for the monthly data (e.g., 1990_01, 1990_02, ...)
+time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', '_04', '_05', '_06', '_07', '_08', '_09', '_10', '_11', '_12'))]
 
-# Display the map
-map_path = "map.html"
-m.to_html(outfile=map_path)
-HtmlFile = open(map_path, 'r', encoding='utf-8')
-source_code = HtmlFile.read() 
-components.html(source_code, height=600)
+# Plot the Water Area over Time (or any other specific column) for the selected lake
+st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
+
+# Extract the monthly data (you could choose another parameter such as trends)
+dates = pd.to_datetime([col for col in time_columns])
+
+# Assuming we're focusing on the column '1990_01', '1990_02', ..., as a water area proxy
+water_area = lake_data[time_columns].values.flatten()
+
+# Plot the Water Area vs. Date
+plt.figure(figsize=(10, 6))
+plt.plot(dates, water_area, marker='o', label='Water Area')
+plt.title(f"Water Area for Lake ID {lake_id} Over Time")
+plt.xlabel('Date')
+plt.ylabel('Water Area')
+plt.xticks(rotation=45)
+plt.grid(True)
+plt.legend()
+st.pyplot(plt)
+
+# Optionally, you can also display seasonal trends or other data (e.g., temperature, precipitation)
+st.subheader('Seasonal Trends')
+
+# Display the seasonal trends for Jul-Oct, Mar-Jun, Nov-Feb
+seasons = ['Jul-Oct_Pe', 'Jul-Oct_Tr', 'Jul-Oct_Ta', 'Mar-Jun_Pe', 'Mar-Jun_Tr', 'Mar-Jun_Ta', 'Nov-Feb_Pe', 'Nov-Feb_Tr', 'Nov-Feb_Ta']
+for season in seasons:
+    st.write(f"{season}: {lake_data[season].values[0]}")
+
