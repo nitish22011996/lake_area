@@ -29,7 +29,7 @@ time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', 
 # Plot the Water Area over Time (or any other specific column) for the selected lake
 st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
 
-# Convert the 'YYYY_MM' format to a proper datetime format
+# Convert the 'YYYY_MM' format to a proper datetime format (e.g., 1990_01 to 1990-01-01)
 dates = [datetime.strptime(col, '%Y_%m') for col in time_columns]
 
 # Assuming we're focusing on the column '1990_01', '1990_02', ..., as a water area proxy
@@ -82,3 +82,4 @@ for _, row in df.iterrows():
 # Display the map in Streamlit
 st.subheader('Map of Lake Locations')
 st.write(m)
+
