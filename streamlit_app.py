@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # Load the CSV data (uploaded file)
-file_path = '/mnt/data/image.png'  # path to your newly uploaded file
+file_path = 'Area_f_2.csv'  # path to your newly uploaded file
 df = pd.read_csv(file_path)
 
 # App title
