@@ -29,7 +29,7 @@ time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', 
 # Plot the Water Area over Time (or any other specific column) for the selected lake
 st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
 
-# Create the dates list from the column names (assuming the format is 'YYYY_MM')
+# Convert the 'YYYY_MM' format to a proper datetime format
 dates = [datetime.strptime(col, '%Y_%m') for col in time_columns]
 
 # Assuming we're focusing on the column '1990_01', '1990_02', ..., as a water area proxy
