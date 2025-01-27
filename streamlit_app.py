@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from datetime import datetime
+import folium
+from folium.plugins import MarkerCluster
 
 # Load the CSV data (uploaded file)
 file_path = 'Area_f_2.csv'  # path to your newly uploaded file
@@ -26,8 +29,8 @@ time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', 
 # Plot the Water Area over Time (or any other specific column) for the selected lake
 st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
 
-# Extract the monthly data (you could choose another parameter such as trends)
-dates = pd.to_datetime([col for col in time_columns])
+# Create the dates list from the column names (assuming the format is 'YYYY_MM')
+dates = [datetime.strptime(col, '%Y_%m') for col in time_columns]
 
 # Assuming we're focusing on the column '1990_01', '1990_02', ..., as a water area proxy
 water_area = lake_data[time_columns].values.flatten()
@@ -51,3 +54,31 @@ seasons = ['Jul-Oct_Pe', 'Jul-Oct_Tr', 'Jul-Oct_Ta', 'Mar-Jun_Pe', 'Mar-Jun_Tr',
 for season in seasons:
     st.write(f"{season}: {lake_data[season].values[0]}")
 
+# Create a map using Folium centered around the first lake's latitude and longitude (or average if multiple)
+lat = lake_data['Lat'].values[0]
+lon = lake_data['Lon'].values[0]
+
+# Create a folium map centered around the selected lake's location
+m = folium.Map(location=[lat, lon], zoom_start=6)
+
+# Add a marker for the lake
+folium.Marker(
+    location=[lat, lon],
+    popup=f"Lake ID: {lake_id}\nLatitude: {lat}\nLongitude: {lon}",
+    icon=folium.Icon(color='blue')
+).add_to(m)
+
+# Optionally, you can add a marker cluster to handle multiple lakes if necessary
+marker_cluster = MarkerCluster().add_to(m)
+
+# Add all lake locations to the map (you can loop over the dataframe if you'd like to plot all lakes)
+for _, row in df.iterrows():
+    folium.Marker(
+        location=[row['Lat'], row['Lon']],
+        popup=f"Lake ID: {row['Lake_id']}\nLatitude: {row['Lat']}\nLongitude: {row['Lon']}",
+        icon=folium.Icon(color='green')
+    ).add_to(marker_cluster)
+
+# Display the map in Streamlit
+st.subheader('Map of Lake Locations')
+st.write(m)
