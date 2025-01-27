@@ -33,7 +33,8 @@ st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
 dates = [f"{col[:4]}-{col[5:7]}-01" for col in time_columns]
 
 # Now use pandas to convert these to datetime objects
-dates = pd.to_datetime(dates, errors='coerce')  # Coerce any invalid dates to NaT
+dates = pd.to_datetime([col for col in time_columns], format='%Y_%m')
+
 
 # Assuming we're focusing on the column '1990_01', '1990_02', ..., as a water area proxy
 water_area = lake_data[time_columns].values.flatten()
