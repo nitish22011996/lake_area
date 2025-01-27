@@ -29,12 +29,12 @@ time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', 
 # Plot the Water Area over Time (or any other specific column) for the selected lake
 st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
 
-# Manually convert 'YYYY_MM' format to 'YYYY-MM-01'
-dates = [f"{col[:4]}-{col[5:7]}-01" for col in time_columns]
 
-# Now use pandas to convert these to datetime objects
-dates = pd.to_datetime([col for col in time_columns], format='%Y_%m')
+# Assuming `time_columns` contains datetime strings like '1990_01', '1990_02', etc.
+time_columns = [col.replace('_', '-') for col in time_columns]
 
+# Now try converting the cleaned datetime strings
+dates = pd.to_datetime(time_columns)
 
 # Assuming we're focusing on the column '1990_01', '1990_02', ..., as a water area proxy
 water_area = lake_data[time_columns].values.flatten()
