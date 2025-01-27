@@ -29,14 +29,13 @@ time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', 
 # Plot the Water Area over Time (or any other specific column) for the selected lake
 st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
 
+# Manually convert 'YYYY_MM' format to 'YYYY-MM-01'
+dates = [f"{col[:4]}-{col[5:7]}-01" for col in time_columns]
 
-# Assuming `time_columns` contains datetime strings like '1990_01', '1990_02', etc.
-time_columns = [col.replace('_', '-') for col in time_columns]
+# Convert these to datetime objects
+dates = pd.to_datetime(dates, errors='coerce')  # Coerce any invalid dates to NaT
 
-# Now try converting the cleaned datetime strings
-dates = pd.to_datetime(time_columns)
-
-# Assuming we're focusing on the column '1990_01', '1990_02', ..., as a water area proxy
+# Assuming we're focusing on the time_columns as water area data
 water_area = lake_data[time_columns].values.flatten()
 
 # Plot the Water Area vs. Date
@@ -53,12 +52,15 @@ st.pyplot(plt)
 # Optionally, you can also display seasonal trends or other data (e.g., temperature, precipitation)
 st.subheader('Seasonal Trends')
 
-# Display the seasonal trends for Jul-Oct, Mar-Jun, Nov-Feb
+# Define the seasonal trend columns
 seasons = ['Jul-Oct_Pe', 'Jul-Oct_Tr', 'Jul-Oct_Ta', 'Mar-Jun_Pe', 'Mar-Jun_Tr', 'Mar-Jun_Ta', 'Nov-Feb_Pe', 'Nov-Feb_Tr', 'Nov-Feb_Ta']
-for season in seasons:
-    st.write(f"{season}: {lake_data[season].values[0]}")
 
-# Create a map using Folium centered around the first lake's latitude and longitude (or average if multiple)
+# Check if seasonal columns exist in the data and display them
+for season in seasons:
+    if season in lake_data.columns:
+        st.write(f"{season}: {lake_data[season].values[0]}")
+
+# Create a map using Folium centered around the lake's latitude and longitude
 lat = lake_data['Lat'].values[0]
 lon = lake_data['Lon'].values[0]
 
