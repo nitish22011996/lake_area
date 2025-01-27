@@ -26,6 +26,9 @@ st.write(lake_data)
 # Extract the columns for the monthly data (e.g., 1990_01, 1990_02, ...)
 time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', '_04', '_05', '_06', '_07', '_08', '_09', '_10', '_11', '_12'))]
 
+# Handle missing values: fill with NaN or interpolate missing months
+lake_data[time_columns] = lake_data[time_columns].apply(pd.to_numeric, errors='coerce')  # Coerce invalid values to NaN
+
 # Plot the Water Area over Time (or any other specific column) for the selected lake
 st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
 
@@ -35,12 +38,16 @@ dates = [f"{col[:4]}-{col[5:7]}-01" for col in time_columns]
 # Convert these to datetime objects
 dates = pd.to_datetime(dates, errors='coerce')  # Coerce any invalid dates to NaT
 
-# Assuming we're focusing on the time_columns as water area data
+# Flatten the water area data and handle missing values (NaN)
 water_area = lake_data[time_columns].values.flatten()
+
+# Handle missing values by interpolation or other method (if necessary)
+# You can choose to fill missing values with a specific method:
+# water_area = pd.Series(water_area).interpolate(method='linear').fillna(0).values
 
 # Plot the Water Area vs. Date
 plt.figure(figsize=(10, 6))
-plt.plot(dates, water_area, marker='o', label='Water Area')
+plt.plot(dates, water_area, marker='o', label='Water Area', color='tab:blue')
 plt.title(f"Water Area for Lake ID {lake_id} Over Time")
 plt.xlabel('Date')
 plt.ylabel('Water Area')
@@ -58,7 +65,11 @@ seasons = ['Jul-Oct_Pe', 'Jul-Oct_Tr', 'Jul-Oct_Ta', 'Mar-Jun_Pe', 'Mar-Jun_Tr',
 # Check if seasonal columns exist in the data and display them
 for season in seasons:
     if season in lake_data.columns:
-        st.write(f"{season}: {lake_data[season].values[0]}")
+        seasonal_value = lake_data[season].values[0]
+        if pd.isna(seasonal_value):
+            st.write(f"{season}: No data available")
+        else:
+            st.write(f"{season}: {seasonal_value}")
 
 # Create a map using Folium centered around the lake's latitude and longitude
 lat = lake_data['Lat'].values[0]
@@ -88,5 +99,6 @@ for _, row in df.iterrows():
 # Display the map in Streamlit
 st.subheader('Map of Lake Locations')
 st.write(m)
+
 
 
