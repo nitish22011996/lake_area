@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 
@@ -18,6 +19,19 @@ st.title('Lake Monitoring - Water Area and Trends')
 # Sidebar for user input
 st.sidebar.subheader("Input Lake ID")
 lake_id_input = st.sidebar.text_input("Enter a Lake ID:", value=str(default_lake_id))
+
+# Sidebar for region filter
+st.sidebar.subheader("Filter Lakes by Region (optional)")
+min_lat = st.sidebar.number_input("Min Latitude", value=float(df['Lat'].min()), format="%.6f")
+max_lat = st.sidebar.number_input("Max Latitude", value=float(df['Lat'].max()), format="%.6f")
+min_lon = st.sidebar.number_input("Min Longitude", value=float(df['Lon'].min()), format="%.6f")
+max_lon = st.sidebar.number_input("Max Longitude", value=float(df['Lon'].max()), format="%.6f")
+
+# Filter dataframe based on region inputs
+filtered_df = df[
+    (df['Lat'] >= min_lat) & (df['Lat'] <= max_lat) &
+    (df['Lon'] >= min_lon) & (df['Lon'] <= max_lon)
+]
 
 # Function to generate the plot
 def plot_lake_data(lake_id):
@@ -58,15 +72,18 @@ plot_lake_data(default_lake_id)
 st.subheader("Map of Lakes")
 m = folium.Map(location=[df['Lat'].mean(), df['Lon'].mean()], zoom_start=6)
 
-# Add markers without clustering, ensuring they remain static
-for _, row in df.iterrows():
+# Add MarkerCluster to the map for better performance
+marker_cluster = MarkerCluster().add_to(m)
+
+# Add markers for the filtered lakes
+for _, row in filtered_df.iterrows():
     folium.Marker(
         location=[row['Lat'], row['Lon']],
         popup=f"Lake ID: {row['Lake_id']}",
         icon=folium.Icon(color='green')
-    ).add_to(m)
+    ).add_to(marker_cluster)
 
-# Display map and handle user clicks
+# Display the map
 map_data = st_folium(m, width=700, height=500)
 
 # Check for user clicks on map
