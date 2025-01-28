@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import folium
-from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 
@@ -58,15 +57,14 @@ plot_lake_data(default_lake_id)
 # Map
 st.subheader("Map of Lakes")
 m = folium.Map(location=[df['Lat'].mean(), df['Lon'].mean()], zoom_start=6)
-marker_cluster = MarkerCluster().add_to(m)
 
-# Add markers with clickable popups
+# Add markers without clustering, ensuring they remain static
 for _, row in df.iterrows():
     folium.Marker(
         location=[row['Lat'], row['Lon']],
         popup=f"Lake ID: {row['Lake_id']}",
         icon=folium.Icon(color='green')
-    ).add_to(marker_cluster)
+    ).add_to(m)
 
 # Display map and handle user clicks
 map_data = st_folium(m, width=700, height=500)
@@ -84,3 +82,4 @@ if map_data and map_data.get('last_object_clicked') is not None:
 if lake_id_input:
     st.sidebar.markdown(f"**Lake ID {lake_id_input} entered manually.**")
     plot_lake_data(lake_id_input)
+
