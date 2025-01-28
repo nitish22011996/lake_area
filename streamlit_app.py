@@ -1,13 +1,12 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
-from datetime import datetime
 import folium
 from folium.plugins import MarkerCluster
+from datetime import datetime
 
-# Load the CSV data (uploaded file)
-file_path = 'Area_f_2.csv'  # path to your newly uploaded file
+# Load the CSV data
+file_path = 'Area_f_2.csv'  # Replace with your file path
 df = pd.read_csv(file_path)
 
 # App title
@@ -23,29 +22,25 @@ lake_data = df[df['Lake_id'] == lake_id]
 st.write(f"Data for Lake ID: {lake_id}")
 st.write(lake_data)
 
-# Extract the columns for the monthly data (e.g., 1990_01, 1990_02, ...)
+# Extract columns for monthly data (e.g., 1990_01, 1990_02, ...)
 time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', '_04', '_05', '_06', '_07', '_08', '_09', '_10', '_11', '_12'))]
 
-# Handle missing values: fill with NaN or interpolate missing months
-lake_data[time_columns] = lake_data[time_columns].apply(pd.to_numeric, errors='coerce')  # Coerce invalid values to NaN
+# Handle missing values in the monthly data
+lake_data[time_columns] = lake_data[time_columns].apply(pd.to_numeric, errors='coerce')
 
-# Plot the Water Area over Time (or any other specific column) for the selected lake
+# Plot the Water Area over Time
 st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
 
-# Manually convert 'YYYY_MM' format to 'YYYY-MM-01'
-dates = [f"{col[:4]}-{col[5:7]}-01" for col in time_columns]
+# Convert time column names to datetime objects (e.g., '1990_01' to '1990-01-01')
+dates = [datetime.strptime(f"{col[:4]}-{col[5:7]}-01", "%Y-%m-%d") for col in time_columns]
 
-# Convert these to datetime objects
-dates = pd.to_datetime(dates, errors='coerce')  # Coerce any invalid dates to NaT
-
-# Flatten the water area data and handle missing values (NaN)
+# Flatten the water area data
 water_area = lake_data[time_columns].values.flatten()
 
-# Handle missing values by interpolation or other method (if necessary)
-# You can choose to fill missing values with a specific method:
-# water_area = pd.Series(water_area).interpolate(method='linear').fillna(0).values
+# Handle missing values in water area
+water_area = pd.Series(water_area).interpolate(method='linear').fillna(0).values
 
-# Plot the Water Area vs. Date
+# Plot the data
 plt.figure(figsize=(10, 6))
 plt.plot(dates, water_area, marker='o', label='Water Area', color='tab:blue')
 plt.title(f"Water Area for Lake ID {lake_id} Over Time")
@@ -56,39 +51,33 @@ plt.grid(True)
 plt.legend()
 st.pyplot(plt)
 
-# Optionally, you can also display seasonal trends or other data (e.g., temperature, precipitation)
+# Seasonal trends
 st.subheader('Seasonal Trends')
-
-# Define the seasonal trend columns
 seasons = ['Jul-Oct_Pe', 'Jul-Oct_Tr', 'Jul-Oct_Ta', 'Mar-Jun_Pe', 'Mar-Jun_Tr', 'Mar-Jun_Ta', 'Nov-Feb_Pe', 'Nov-Feb_Tr', 'Nov-Feb_Ta']
 
-# Check if seasonal columns exist in the data and display them
 for season in seasons:
     if season in lake_data.columns:
-        seasonal_value = lake_data[season].values[0]
-        if pd.isna(seasonal_value):
-            st.write(f"{season}: No data available")
-        else:
-            st.write(f"{season}: {seasonal_value}")
+        value = lake_data[season].values[0]
+        st.write(f"{season}: {value if not pd.isna(value) else 'No data available'}")
 
-# Create a map using Folium centered around the lake's latitude and longitude
+# Map of lake locations
+st.subheader('Map of Lake Locations')
+
+# Center map on the selected lake
 lat = lake_data['Lat'].values[0]
 lon = lake_data['Lon'].values[0]
-
-# Create a folium map centered around the selected lake's location
 m = folium.Map(location=[lat, lon], zoom_start=6)
 
-# Add a marker for the lake
+# Add a marker for the selected lake
 folium.Marker(
     location=[lat, lon],
     popup=f"Lake ID: {lake_id}\nLatitude: {lat}\nLongitude: {lon}",
     icon=folium.Icon(color='blue')
 ).add_to(m)
 
-# Optionally, you can add a marker cluster to handle multiple lakes if necessary
+# Add a marker cluster for all lakes
 marker_cluster = MarkerCluster().add_to(m)
 
-# Add all lake locations to the map (you can loop over the dataframe if you'd like to plot all lakes)
 for _, row in df.iterrows():
     folium.Marker(
         location=[row['Lat'], row['Lon']],
@@ -96,9 +85,5 @@ for _, row in df.iterrows():
         icon=folium.Icon(color='green')
     ).add_to(marker_cluster)
 
-# Display the map in Streamlit
-st.subheader('Map of Lake Locations')
-st.write(m)
-
-
-
+# Display the map
+folium_static = st.components.v1.html(m._repr_html_(), height=600)
