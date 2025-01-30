@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 
 # Load the CSV data
-file_path = 'Area_final.csv'  # Replace with your file path
+file_path = 'Area_f_2.csv'  # Replace with your file path
 df = pd.read_csv(file_path)
 
 # Ensure column names are clean (remove spaces, convert to uppercase if needed)
@@ -47,8 +47,18 @@ default_lake_id = lake_ids[0]
 st.sidebar.subheader("Select Lake ID")
 selected_lake_id = st.sidebar.selectbox("Choose a Lake ID:", lake_ids, index=0)
 
+# Extract available years from column names
+time_columns = [col for col in df.columns if col.endswith(tuple([f'_{i:02d}' for i in range(1, 13)]))]
+years_available = sorted(set(int(col[:4]) for col in time_columns))
+
+# Sidebar: Select Year Range
+st.sidebar.subheader("Select Year Range")
+start_year, end_year = st.sidebar.slider("Choose a year range:", min_value=min(years_available), 
+                                         max_value=max(years_available), 
+                                         value=(min(years_available), max(years_available)))
+
 # Function to plot lake water area time series
-def plot_lake_data(lake_id):
+def plot_lake_data(lake_id, start_year, end_year):
     try:
         lake_data = df[df['Lake_id'] == lake_id]
 
@@ -56,20 +66,20 @@ def plot_lake_data(lake_id):
             st.error("No data available for the selected Lake ID.")
             return
 
-        # Extract the time-series data
-        time_columns = [col for col in df.columns if col.endswith(tuple([f'_{i:02d}' for i in range(1, 13)]))]
-        lake_data[time_columns] = lake_data[time_columns].apply(pd.to_numeric, errors='coerce')
+        # Filter time columns based on selected year range
+        selected_time_columns = [col for col in time_columns if start_year <= int(col[:4]) <= end_year]
+        lake_data[selected_time_columns] = lake_data[selected_time_columns].apply(pd.to_numeric, errors='coerce')
 
         # Generate date labels
-        dates = [f"{col[:4]}-{col[5:7]}-01" for col in time_columns]
+        dates = [f"{col[:4]}-{col[5:7]}-01" for col in selected_time_columns]
         dates = pd.to_datetime(dates, errors='coerce')
-        water_area = lake_data[time_columns].values.flatten()
+        water_area = lake_data[selected_time_columns].values.flatten()
 
-        # Interpolate missing values
-        water_area = pd.Series(water_area).interpolate(method='linear')
+        # Fill missing values by carrying forward the previous value
+        water_area = pd.Series(water_area).fillna(method='ffill')  # Forward fill
 
         # Plot
-        st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
+        st.subheader(f'Water Area for Lake ID {lake_id} ({start_year} - {end_year})')
         plt.figure(figsize=(10, 6))
         plt.plot(dates, water_area, marker='o', linestyle='-', color='tab:blue', label='Water Area')
         plt.xlabel('Date')
@@ -82,7 +92,17 @@ def plot_lake_data(lake_id):
         st.error(f"Error while plotting data: {e}")
 
 # Display water area time series for selected lake
-plot_lake_data(selected_lake_id)
+plot_lake_data(selected_lake_id, start_year, end_year)
+
+# Button to download CSV for selected lake
+def get_csv_download_link(lake_id):
+    """Generate a CSV download link for the selected lake ID."""
+    lake_data = df[df['Lake_id'] == lake_id]
+    if not lake_data.empty:
+        csv = lake_data.to_csv(index=False)
+        st.download_button(label="Download Lake Data as CSV", data=csv, file_name=f"lake_{lake_id}_data.csv", mime="text/csv")
+
+get_csv_download_link(selected_lake_id)
 
 # Display map with filtered lakes for the selected district
 st.subheader(f"Map of Lakes in {selected_district}, {selected_state}")
@@ -100,3 +120,4 @@ for _, row in filtered_lakes.iterrows():
 
 # Display map
 st_folium(m, width=700, height=500)
+
