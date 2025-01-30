@@ -99,6 +99,10 @@ def plot_lake_data(lake_id, start_year, end_year):
     except Exception as e:
         st.error(f"Error while plotting data: {e}")
 
+# Plot for the default lake ID when the app loads
+if not submit:
+    plot_lake_data(default_lake_id, start_year, end_year)
+
 # If user clicks Submit, show plot
 if submit:
     plot_lake_data(selected_lake_id, start_year, end_year)
@@ -131,4 +135,5 @@ for _, row in filtered_lakes.iterrows():
 
 # Display map
 st_folium(m, width=700, height=500)
+
 
