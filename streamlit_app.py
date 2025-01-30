@@ -6,7 +6,7 @@ import folium
 from streamlit_folium import st_folium
 
 # Load the CSV data
-file_path = 'Area_final.csv'  # Replace with your file path
+file_path = 'Area_f_2.csv'  # Replace with your file path
 df = pd.read_csv(file_path)
 
 # Clean column names (strip spaces)
@@ -32,8 +32,23 @@ selected_state = st.sidebar.selectbox("Select a State:", states)
 districts = df[df['STATE'] == selected_state]['District'].dropna().unique()
 selected_district = st.sidebar.selectbox("Select a District:", districts)
 
-# Step 3: Choose Lake (filtered by selected district)
+# Filter lakes in the selected district
 lakes_in_district = df[(df['STATE'] == selected_state) & (df['District'] == selected_district)]
+
+# Step 3: Display all lake locations on the map
+st.subheader(f"Lakes in {selected_district}")
+m = folium.Map(location=[lakes_in_district['Lat'].mean(), lakes_in_district['Lon'].mean()], zoom_start=8)
+
+for _, lake in lakes_in_district.iterrows():
+    folium.Marker(
+        location=[lake['Lat'], lake['Lon']],
+        popup=f"Lake ID: {lake['Lake_id']}",
+        tooltip=f"Lake ID: {lake['Lake_id']}"
+    ).add_to(m)
+
+st_folium(m, width=700, height=500)
+
+# Step 4: Choose a lake from a dropdown (instead of clicking on the map)
 lake_ids = lakes_in_district['Lake_id'].dropna().unique()
 selected_lake_id = st.sidebar.selectbox("Select a Lake ID:", lake_ids)
 
@@ -65,6 +80,10 @@ def plot_lake_data(lake_id):
         st.pyplot(plt)
     except Exception as e:
         st.error(f"Error while plotting data: {e}")
+
+# Display time series plot for the selected lake
+if selected_lake_id:
+    plot_lake_data(selected_lake_id)
 
 # Display time series plot for the selected lake
 if selected_lake_id:
