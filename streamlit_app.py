@@ -7,7 +7,7 @@ from streamlit_folium import st_folium
 import matplotlib.pyplot as plt
 
 # Load the CSV data
-file_path = 'Area_f_2.csv'  # Replace with your file path
+file_path = 'Area_final.csv'  # Replace with your file path
 df = pd.read_csv(file_path)
 
 # Streamlit App Title
