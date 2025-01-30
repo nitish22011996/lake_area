@@ -99,13 +99,18 @@ def plot_lake_data(lake_id, start_year, end_year):
     except Exception as e:
         st.error(f"Error while plotting data: {e}")
 
+# Initialize session state for storing the submitted Lake ID
+if "submitted_lake_id" not in st.session_state:
+    st.session_state.submitted_lake_id = default_lake_id  # Store the default lake ID
+
 # Plot for the default lake ID when the app loads
 if not submit:
-    plot_lake_data(default_lake_id, start_year, end_year)
+    plot_lake_data(st.session_state.submitted_lake_id, start_year, end_year)
 
-# If user clicks Submit, show plot
+# If user clicks Submit, update and show plot
 if submit:
-    plot_lake_data(selected_lake_id, start_year, end_year)
+    st.session_state.submitted_lake_id = selected_lake_id  # Store the selected lake ID
+    plot_lake_data(st.session_state.submitted_lake_id, start_year, end_year)
 
 # Button to download CSV for selected lake
 def get_csv_download_link(lake_id):
@@ -117,7 +122,7 @@ def get_csv_download_link(lake_id):
 
 # Show download button after submit
 if submit:
-    get_csv_download_link(selected_lake_id)
+    get_csv_download_link(st.session_state.submitted_lake_id)
 
 # Display map with filtered lakes for the selected district
 st.subheader(f"Map of Lakes in {selected_district}, {selected_state}")
@@ -135,5 +140,6 @@ for _, row in filtered_lakes.iterrows():
 
 # Display map
 st_folium(m, width=700, height=500)
+
 
 
