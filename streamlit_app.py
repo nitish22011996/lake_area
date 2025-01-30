@@ -1,64 +1,53 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
+import matplotlib.pyplot as plt
 
 # Load the CSV data
 file_path = 'Area_final.csv'  # Replace with your file path
 df = pd.read_csv(file_path)
 
-# Clean column names (strip spaces)
+# Ensure column names are clean (remove spaces, convert to uppercase if needed)
 df.columns = df.columns.str.strip()
 
-# Check if required columns exist
-required_columns = {'STATE', 'District', 'Lake_id', 'Lat', 'Lon'}
-if not required_columns.issubset(df.columns):
-    st.error(f"Missing required columns: {required_columns - set(df.columns)}")
+# Sort states and districts for dropdown selection
+df['STATE'] = df['STATE'].astype(str)
+df['District'] = df['District'].astype(str)
+sorted_states = sorted(df['STATE'].unique())  # Sort state list
+default_state = sorted_states[0]  # Set first state as default
+
+# Sidebar: Select State
+st.sidebar.subheader("Select State")
+selected_state = st.sidebar.selectbox("Choose a State:", sorted_states, index=0)
+
+# Filter districts based on selected state
+filtered_districts = df[df['STATE'] == selected_state]['District'].unique()
+sorted_districts = sorted(filtered_districts)
+default_district = sorted_districts[0]  # Set first district as default
+
+# Sidebar: Select District
+st.sidebar.subheader("Select District")
+selected_district = st.sidebar.selectbox("Choose a District:", sorted_districts, index=0)
+
+# Filter lakes based on selected district
+filtered_lakes = df[(df['STATE'] == selected_state) & (df['District'] == selected_district)]
+
+# Ensure at least one lake is selected by default
+if filtered_lakes.empty:
+    st.error("No lakes available for the selected State and District.")
     st.stop()
 
-# Streamlit App Title
-st.title('Lake Monitoring - Water Area and Trends')
+lake_ids = sorted(filtered_lakes['Lake_id'].unique())
+default_lake_id = lake_ids[0]
 
-# Sidebar for user selection
-st.sidebar.subheader("Select Filters")
+# Sidebar: Select Lake ID
+st.sidebar.subheader("Select Lake ID")
+selected_lake_id = st.sidebar.selectbox("Choose a Lake ID:", lake_ids, index=0)
 
-# Step 1: Choose State (sorted list)
-states = sorted(df['STATE'].dropna().unique())
-default_state = states[0] if states else None
-selected_state = st.sidebar.selectbox("Select a State:", states, index=states.index(default_state) if default_state else 0)
-
-# Step 2: Choose District (filtered by selected state & sorted)
-districts = sorted(df[df['STATE'] == selected_state]['District'].dropna().unique())
-default_district = districts[0] if districts else None
-selected_district = st.sidebar.selectbox("Select a District:", districts, index=districts.index(default_district) if default_district else 0)
-
-# Filter lakes in the selected district
-lakes_in_district = df[(df['STATE'] == selected_state) & (df['District'] == selected_district)]
-
-# Step 3: Display all lake locations on the map
-st.subheader(f"Lakes in {selected_district}")
-if not lakes_in_district.empty:
-    m = folium.Map(location=[lakes_in_district['Lat'].mean(), lakes_in_district['Lon'].mean()], zoom_start=8)
-    
-    for _, lake in lakes_in_district.iterrows():
-        folium.Marker(
-            location=[lake['Lat'], lake['Lon']],
-            popup=f"Lake ID: {lake['Lake_id']}",
-            tooltip=f"Lake ID: {lake['Lake_id']}"
-        ).add_to(m)
-
-    st_folium(m, width=700, height=500)
-else:
-    st.warning("No lakes found in the selected district.")
-
-# Step 4: Choose a lake from a dropdown (sorted list)
-lake_ids = sorted(lakes_in_district['Lake_id'].dropna().unique())
-default_lake_id = lake_ids[0] if lake_ids else None
-selected_lake_id = st.sidebar.selectbox("Select a Lake ID:", lake_ids, index=lake_ids.index(default_lake_id) if default_lake_id else 0)
-
-# Function to generate the plot
+# Function to plot lake water area time series
 def plot_lake_data(lake_id):
     try:
         lake_data = df[df['Lake_id'] == lake_id]
@@ -67,17 +56,22 @@ def plot_lake_data(lake_id):
             st.error("No data available for the selected Lake ID.")
             return
 
-        # Extract time-series columns (Assuming columns are in 'YYYY_MM' format)
-        time_columns = [col for col in df.columns if col.endswith(('_01', '_02', '_03', '_04', '_05', '_06', 
-                                                                 '_07', '_08', '_09', '_10', '_11', '_12'))]
-        dates = [f"{col[:4]}-{col[5:7]}-01" for col in time_columns]  # Convert to YYYY-MM-DD format
+        # Extract the time-series data
+        time_columns = [col for col in df.columns if col.endswith(tuple([f'_{i:02d}' for i in range(1, 13)]))]
+        lake_data[time_columns] = lake_data[time_columns].apply(pd.to_numeric, errors='coerce')
+
+        # Generate date labels
+        dates = [f"{col[:4]}-{col[5:7]}-01" for col in time_columns]
         dates = pd.to_datetime(dates, errors='coerce')
         water_area = lake_data[time_columns].values.flatten()
 
-        # Plot the data
+        # Interpolate missing values
+        water_area = pd.Series(water_area).interpolate(method='linear')
+
+        # Plot
         st.subheader(f'Water Area for Lake ID {lake_id} Over Time')
         plt.figure(figsize=(10, 6))
-        plt.plot(dates, water_area, marker='o', label='Water Area', color='tab:blue')
+        plt.plot(dates, water_area, marker='o', linestyle='-', color='tab:blue', label='Water Area')
         plt.xlabel('Date')
         plt.ylabel('Water Area')
         plt.xticks(rotation=45)
@@ -87,6 +81,22 @@ def plot_lake_data(lake_id):
     except Exception as e:
         st.error(f"Error while plotting data: {e}")
 
-# Display time series plot for the selected lake
-if selected_lake_id:
-    plot_lake_data(selected_lake_id)
+# Display water area time series for selected lake
+plot_lake_data(selected_lake_id)
+
+# Display map with filtered lakes for the selected district
+st.subheader(f"Map of Lakes in {selected_district}, {selected_state}")
+m = folium.Map(location=[filtered_lakes['Lat'].mean(), filtered_lakes['Lon'].mean()], zoom_start=7)
+
+# Add markers for filtered lakes
+marker_cluster = MarkerCluster().add_to(m)
+
+for _, row in filtered_lakes.iterrows():
+    folium.Marker(
+        location=[row['Lat'], row['Lon']],
+        popup=f"Lake ID: {row['Lake_id']}",
+        icon=folium.Icon(color='green')
+    ).add_to(marker_cluster)
+
+# Display map
+st_folium(m, width=700, height=500)
