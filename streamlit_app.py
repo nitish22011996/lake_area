@@ -81,11 +81,15 @@ def plot_lake_data(lake_id, start_year, end_year):
         # Fill missing values by carrying forward the previous value
         filled_water_area = pd.Series(water_area).fillna(method='ffill')  # Forward fill
 
+        # Only connect data points (not interpolated lines for missing data)
+        non_na_indices = ~np.isnan(water_area)
+        dates_filtered = dates[non_na_indices]
+        water_area_filtered = water_area[non_na_indices]
+
         # Plot
         st.subheader(f'Water Area for Lake ID {lake_id} ({start_year} - {end_year})')
         plt.figure(figsize=(10, 6))
-        plt.plot(dates, water_area, marker='o', linestyle='-', color='tab:blue', label='Original Data', linewidth=1.5)
-        plt.plot(dates, filled_water_area, marker='o', linestyle='-', color='tab:blue', label='Filled Data', linewidth=1.5)
+        plt.plot(dates_filtered, water_area_filtered, marker='o', linestyle='-', color='tab:blue', label='Data', linewidth=1.5)
         plt.xlabel('Date')
         plt.ylabel('Water Area')
         plt.xticks(rotation=45)
@@ -127,5 +131,4 @@ for _, row in filtered_lakes.iterrows():
 
 # Display map
 st_folium(m, width=700, height=500)
-
 
