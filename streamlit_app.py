@@ -10,14 +10,14 @@ import matplotlib.pyplot as plt
 file_path = 'Area_final.csv'  # Replace with your file path
 df = pd.read_csv(file_path)
 
-# Ensure column names are clean (remove spaces, convert to uppercase if needed)
+# Ensure column names are clean (remove spaces)
 df.columns = df.columns.str.strip()
 
 # Sort states and districts for dropdown selection
 df['STATE'] = df['STATE'].astype(str)
 df['District'] = df['District'].astype(str)
 sorted_states = sorted(df['STATE'].unique())  # Sort state list
-default_state = sorted_states[0]  # Set first state as default
+default_state = sorted_states[0]  # Default first state
 
 # Sidebar: Select State
 st.sidebar.subheader("Select State")
@@ -26,7 +26,7 @@ selected_state = st.sidebar.selectbox("Choose a State:", sorted_states, index=0)
 # Filter districts based on selected state
 filtered_districts = df[df['STATE'] == selected_state]['District'].unique()
 sorted_districts = sorted(filtered_districts)
-default_district = sorted_districts[0]  # Set first district as default
+default_district = sorted_districts[0]  # Default first district
 
 # Sidebar: Select District
 st.sidebar.subheader("Select District")
@@ -35,7 +35,7 @@ selected_district = st.sidebar.selectbox("Choose a District:", sorted_districts,
 # Filter lakes based on selected district
 filtered_lakes = df[(df['STATE'] == selected_state) & (df['District'] == selected_district)]
 
-# Ensure at least one lake is selected by default
+# Ensure at least one lake is available
 if filtered_lakes.empty:
     st.error("No lakes available for the selected State and District.")
     st.stop()
@@ -57,6 +57,9 @@ start_year, end_year = st.sidebar.slider("Choose a year range:", min_value=min(y
                                          max_value=max(years_available), 
                                          value=(min(years_available), max(years_available)))
 
+# Submit button
+submit = st.sidebar.button("Submit")
+
 # Function to plot lake water area time series
 def plot_lake_data(lake_id, start_year, end_year):
     try:
@@ -76,12 +79,13 @@ def plot_lake_data(lake_id, start_year, end_year):
         water_area = lake_data[selected_time_columns].values.flatten()
 
         # Fill missing values by carrying forward the previous value
-        water_area = pd.Series(water_area).fillna(method='ffill')  # Forward fill
+        filled_water_area = pd.Series(water_area).fillna(method='ffill')  # Forward fill
 
         # Plot
         st.subheader(f'Water Area for Lake ID {lake_id} ({start_year} - {end_year})')
         plt.figure(figsize=(10, 6))
-        plt.plot(dates, water_area, marker='o', linestyle='-', color='tab:blue', label='Water Area')
+        plt.plot(dates, water_area, marker='o', linestyle='-', color='tab:blue', label='Original Data', linewidth=1.5)
+        plt.plot(dates, filled_water_area, marker='o', linestyle='-', color='tab:blue', label='Filled Data', linewidth=1.5)
         plt.xlabel('Date')
         plt.ylabel('Water Area')
         plt.xticks(rotation=45)
@@ -91,8 +95,9 @@ def plot_lake_data(lake_id, start_year, end_year):
     except Exception as e:
         st.error(f"Error while plotting data: {e}")
 
-# Display water area time series for selected lake
-plot_lake_data(selected_lake_id, start_year, end_year)
+# If user clicks Submit, show plot
+if submit:
+    plot_lake_data(selected_lake_id, start_year, end_year)
 
 # Button to download CSV for selected lake
 def get_csv_download_link(lake_id):
@@ -102,7 +107,9 @@ def get_csv_download_link(lake_id):
         csv = lake_data.to_csv(index=False)
         st.download_button(label="Download Lake Data as CSV", data=csv, file_name=f"lake_{lake_id}_data.csv", mime="text/csv")
 
-get_csv_download_link(selected_lake_id)
+# Show download button after submit
+if submit:
+    get_csv_download_link(selected_lake_id)
 
 # Display map with filtered lakes for the selected district
 st.subheader(f"Map of Lakes in {selected_district}, {selected_state}")
@@ -120,4 +127,5 @@ for _, row in filtered_lakes.iterrows():
 
 # Display map
 st_folium(m, width=700, height=500)
+
 
